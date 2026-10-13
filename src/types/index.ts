@@ -54,3 +54,5 @@ export interface WeekSummary {
 }
 
 export type TrendDirection = 'up' | 'down' | 'stable';
+
+export type AppView = 'command-center' | 'align';

@@ -1,3 +1,30 @@
+# Blueprint — Business OS
+
+A CEO operating system with two modules:
+
+- **CEO Command Center** — weekly scoreboard, meeting cadence, and decision flow.
+- **AI Business Integration (ALIGN Framework™)** — a strategic decision method that helps CEOs decide *why, where, when, how,* and *what* AI should do for the business. Strategy determines where AI creates value, not the other way round.
+
+Full methodology and gap analysis: [`docs/ALIGN_FRAMEWORK.md`](docs/ALIGN_FRAMEWORK.md).
+
+```bash
+npm install
+npm run dev      # open /#align for the ALIGN workspace
+npm run build
+```
+
+### ALIGN in the app
+| Tab | Decision | What it does |
+|---|---|---|
+| Assess | WHY | Strategic Alignment Map + "Is this an AI problem?" constraint diagnostic |
+| Locate | WHERE | Value Opportunity Map, Business Value Test, risk-adjusted economics |
+| Identify | WHEN | Six-dimension readiness with critical-deficiency rules |
+| Govern | HOW | Integration business case, oversight model, mandatory risk gates |
+| Navigate | WHAT | Performance scorecard, value-realization chain, scale/iterate/stop |
+| Decision Matrix | — | Weighted scoring + gates → Invest Now / Build Readiness / Pilot & Validate / Do Not Pursue; send to Decision Flow |
+
+---
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

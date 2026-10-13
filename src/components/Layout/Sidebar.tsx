@@ -7,19 +7,22 @@ import {
   Users,
   Settings,
   HelpCircle,
-  Zap
+  Zap,
+  Compass
 } from 'lucide-react';
+import type { AppView } from '../../types';
 
 interface NavItem {
   icon: typeof LayoutDashboard;
   label: string;
   href: string;
-  active?: boolean;
+  view?: AppView;
   badge?: string;
 }
 
 const mainNavItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '#', active: true },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '#', view: 'command-center' },
+  { icon: Compass, label: 'AI Integration', href: '#align', view: 'align' },
   { icon: Target, label: 'Scoreboard', href: '#scoreboard' },
   { icon: Calendar, label: 'Meetings', href: '#meetings' },
   { icon: GitBranch, label: 'Decisions', href: '#decisions', badge: '3' },
@@ -32,7 +35,12 @@ const bottomNavItems: NavItem[] = [
   { icon: HelpCircle, label: 'Help', href: '#help' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  activeView: AppView;
+  onNavigate: (view: AppView) => void;
+}
+
+export function Sidebar({ activeView, onNavigate }: SidebarProps) {
   return (
     <aside className="w-64 bg-slate-900 text-white flex flex-col min-h-screen">
       <div className="p-5 border-b border-slate-700">
@@ -53,9 +61,15 @@ export function Sidebar() {
             <li key={item.label}>
               <a
                 href={item.href}
+                onClick={(e) => {
+                  if (item.view) {
+                    e.preventDefault();
+                    onNavigate(item.view);
+                  }
+                }}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
-                  ${item.active
+                  ${item.view === activeView
                     ? 'bg-blue-600 text-white'
                     : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }

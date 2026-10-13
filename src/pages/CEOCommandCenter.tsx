@@ -4,12 +4,18 @@ import { WeekSummary } from '../components/WeekSummary';
 import { Scoreboard } from '../components/Scoreboard';
 import { MeetingCadence } from '../components/MeetingCadence';
 import { DecisionFlow } from '../components/DecisionFlow';
+import type { AppView } from '../types';
 
-export function CEOCommandCenter() {
+interface CEOCommandCenterProps {
+  activeView: AppView;
+  onNavigate: (view: AppView) => void;
+}
+
+export function CEOCommandCenter({ activeView, onNavigate }: CEOCommandCenterProps) {
   const { metrics, meetings, decisions, updateDecisionStatus } = useCEO();
 
   return (
-    <MainLayout>
+    <MainLayout activeView={activeView} onNavigate={onNavigate}>
       <div className="space-y-6 max-w-7xl mx-auto">
         {/* Week Summary Hero */}
         <WeekSummary
