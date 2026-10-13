@@ -35,6 +35,7 @@ interface AlignFrameworkProps {
 
 export function AlignFramework({ activeView, onNavigate }: AlignFrameworkProps) {
   const [view, setView] = useState<AlignView>('overview');
+  const [confirmReset, setConfirmReset] = useState(false);
   const { dispatch } = useAlign();
 
   return (
@@ -70,16 +71,33 @@ export function AlignFramework({ activeView, onNavigate }: AlignFrameworkProps) 
               </button>
             ))}
           </nav>
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm('Replace your ALIGN work with the worked example?')) dispatch({ type: 'RESET' });
-            }}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Load worked example
-          </button>
+          {confirmReset ? (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-600">Replace your ALIGN work with the worked example?</span>
+              <button
+                type="button"
+                onClick={() => {
+                  dispatch({ type: 'RESET' });
+                  setConfirmReset(false);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700"
+              >
+                Replace
+              </button>
+              <button type="button" onClick={() => setConfirmReset(false)} className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-100">
+                Keep my work
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmReset(true)}
+              className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Load worked example
+            </button>
+          )}
         </div>
 
         {view === 'overview' && <AlignOverview onNavigate={setView} />}

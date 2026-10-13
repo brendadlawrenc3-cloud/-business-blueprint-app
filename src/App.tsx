@@ -7,7 +7,9 @@ import type { AppView } from './types';
 import './index.css';
 
 function initialView(): AppView {
-  return window.location.hash === '#align' ? 'align' : 'command-center';
+  if (window.location.hash === '#align') return 'align';
+  if (window.location.hash === '' && import.meta.env.VITE_DEFAULT_VIEW === 'align') return 'align';
+  return 'command-center';
 }
 
 function App() {
@@ -22,7 +24,7 @@ function App() {
 
   const navigate = (next: AppView) => {
     setView(next);
-    window.history.replaceState(null, '', next === 'align' ? '#align' : '#');
+    window.history.replaceState(null, '', next === 'align' ? '#align' : '#dashboard');
   };
 
   return (
