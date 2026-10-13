@@ -146,6 +146,10 @@ AI integration is an organizational change initiative, not a technology project.
 | Scale criteria *(added)* | Turnaround ≤ 2.5 days and win rate ≥ 26% at day 90 |
 | Stop criteria *(added)* | Not below 4 days at day 60, or any factual error reaching a client |
 
+### Workforce impact & sourcing *(added)*
+- **Workforce impact:** roles affected and a reskilling plan for each opportunity.
+- **Build / buy / partner:** chosen only after the business case and risk gates. Six tool-neutral criteria are scored: data handling, integration fit, total cost of ownership, exit and portability, provider viability, and time to value.
+
 ### Mandatory risk gates
 Each gate is rated Pass / Conditional / Fail. **Any Fail stops the opportunity, whatever its score.** No pilot starts while a gate is still unassessed.
 
@@ -167,6 +171,9 @@ Progress = share of the baseline→target gap closed.
 ### Value realization chain *(added)*
 **Hours freed → redeployed to → business outcome moved.**
 Time saved is not automatically value created. If an initiative reports hours saved but cannot name where they went and what outcome moved, it is reported as *activity*, not *value*.
+
+### Sustain plan *(added)*
+A long-term owner, cost reviews (default every 90 days) against planned run cost, and accuracy spot-checks (default every 30 days, sampling a set number of outputs). The app raises alerts when a review is overdue or cost runs more than 20% over plan.
 
 ### Scale / Iterate / Stop
 - **Scale:** ≥ 80% average gap closure *and* efficiency linked to an outcome
@@ -205,7 +212,7 @@ The thresholds are a starting point. Calibrate them against real CEO cases (see 
 **Audience:** CEOs and leadership teams of small and mid-market companies, often in peer-advisory settings. Many have no CTO or data team.
 **Goals:** a repeatable decision method, sold as an assessment, a workshop, and an advisory engagement.
 
-The gaps below are listed by impact. Items marked ✅ are now part of the framework and the app.
+The gaps below are listed by impact. All of them are now part of both the framework and the app.
 
 | # | Gap | Why it matters for this audience | Resolution |
 |---|---|---|---|
@@ -214,21 +221,41 @@ The gaps below are listed by impact. Items marked ✅ are now part of the framew
 | 3 | **No baseline requirement** ✅ | Without a pre-pilot baseline, results can't be attributed, so N can't work. | Baseline is a required field in G. Without it, the business case is incomplete. |
 | 4 | **Vague "expand only if…"** ✅ | Pilots with no exit plan drift on for months. | Scale and stop criteria are agreed *before* the pilot. N gives a verdict. |
 | 5 | **Time-saved trap had no mechanism** ✅ | The "300 hours" insight is a key differentiator but wasn't operational. | Value realization chain. Unlinked efficiency is flagged as activity, not value. |
-| 6 | **People & workforce impact underweighted** ✅ (partial) | Fear of job loss is the most common reason adoption stalls. CEOs need a position on it before rollout. | People-change field, workforce-readiness dimension, and a missing-people-change flag. **Still to build:** a workforce communication template and a "capacity redeployment, not reduction" policy option. |
+| 6 | **People & workforce impact underweighted** ✅ | Fear of job loss is the most common reason adoption stalls. CEOs need a position on it before rollout. | Per opportunity: roles affected and a reskilling plan, flagged when missing. Company-wide: a stated workforce position, a written commitment, and a 7-step communication plan (Operating Model). |
 | 7 | **Risk gates too generic** ✅ | "Privacy, security, legal" misses the risks small firms hit most. | Six named gates, including customer trust and vendor dependency/exit. |
-| 8 | **No defensive/competitive lens** ✅ (question) | Reinvent covers upside but not the threat, e.g. AI eroding billable-hour pricing in professional services. | Added A-question #6. **Still to build:** a short "AI exposure" check: which revenue streams could a competitor using AI undercut? |
-| 9 | **No current-state inventory ("shadow AI")** ⚠️ | Most companies already have staff using AI tools without policy. This is the most common live risk. | **Recommended addition to A:** a 15-minute inventory of current AI use, plus a minimum acceptable-use policy as the first governance deliverable. |
-| 10 | **No portfolio / change-capacity view** ✅ (partial) | A $5M company can absorb only 1–3 concurrent changes. | Portfolio counts by decision and level on the Overview. **Recommended:** a limit on concurrent pilots, set by company size. |
-| 11 | **No governance cadence or decision rights** ⚠️ | The framework names deliverables but not who decides and when. | Opportunities can be sent into the app's Decision Flow. **Recommended:** a quarterly AI portfolio review in the leadership meeting rhythm, and a RACI (CEO approves Invest Now; process owner runs the pilot; a governance lead clears gates). |
-| 12 | **Build / buy / partner choice** ⚠️ | Staying tool-agnostic is right, but G eventually needs a way to choose. | **Recommended:** tool-agnostic selection criteria applied *after* the business case: data handling, integration, total cost, exit terms, vendor viability. |
-| 13 | **Sustain phase thin** ⚠️ | AI performance drifts, usage costs creep, and owners move on. | **Recommended:** ownership after the pilot, quarterly cost review, accuracy re-sampling. Reassessment triggers are included (§9). |
-| 14 | **Size calibration** ⚠️ | A $3M firm and a $150M firm need different depth. | **Recommended:** "ALIGN Essentials" (one workshop, top 3 opportunities) and "ALIGN Enterprise" (full diagnostic) using the same logic. |
-| 15 | **IP / naming risk** ⚠️ | "ALIGN" is widely used in business frameworks. | Run a trademark search before using ™/®. Consider a distinctive qualifier (e.g. "ALIGN AI Integration Method"). |
-| 16 | **No validation protocol** ⚠️ | The draft rightly says to validate with real CEOs before formalizing. | See §10. |
+| 8 | **No defensive/competitive lens** ✅ | Reinvent covers upside but not the threat, e.g. AI eroding billable-hour pricing in professional services. | Added A-question #6 and an **AI exposure check**: each revenue stream gets a share, threat (1–5), and horizon. High-threat streams require a strategic response. |
+| 9 | **No current-state inventory ("shadow AI")** ✅ | Most companies already have staff using AI tools without policy. This is the most common live risk. | **Current AI use inventory** (use, team, kind of tool, data sensitivity, sanctioned). Unsanctioned use of client or personal data is flagged "Act now". An 8-element **minimum acceptable-use policy** is the first governance deliverable. |
+| 10 | **No portfolio / change-capacity view** ✅ | A $5M company can absorb only 1–3 concurrent changes. | Limit on concurrent pilots, set by revenue band (2/3/5/8), which leadership can override. Running pilots plus Invest Now approvals are checked against it in the Decision Matrix. A portfolio-balance view warns when every item is Optimize. |
+| 11 | **No governance cadence or decision rights** ✅ | The framework names deliverables but not who decides and when. | **Operating Model** tab: Accountable / Responsible / Consulted for seven AI governance activities, and a monthly or quarterly portfolio review with a standing agenda that can be added to the Command Center meetings. Decisions go into Decision Flow. |
+| 12 | **Build / buy / partner choice** ✅ | Staying tool-agnostic is right, but G eventually needs a way to choose. | Govern: choose build, buy, or partner, and score six tool-neutral criteria (data handling, integration, total cost of ownership, exit and portability, provider viability, time to value). It warns when the choice is made before the risk gates are assessed. |
+| 13 | **Sustain phase thin** ✅ | AI performance drifts, usage costs creep, and owners move on. | Navigate: **sustain plan** with a long-term owner, cost-review and accuracy-check schedules, and actual vs planned run cost. Alerts appear when reviews are overdue or cost is more than 20% over plan. |
+| 14 | **Size calibration** ✅ | A $3M firm and a $150M firm need different depth. | Company profile with revenue band and headcount sets **ALIGN Essentials** or **ALIGN Enterprise** (same logic, different depth), the recommended review cadence, and the pilot limit. |
+| 15 | **IP / naming risk** ✅ (tracked) | "ALIGN" is widely used in business frameworks. | Advisor tab: an **IP readiness checklist** (trademark search, distinctive qualifier, dated method document, © on materials, client licensing terms, validation). The legal search itself must still be done by counsel. |
+| 16 | **No validation protocol** ✅ | The draft rightly says to validate with real CEOs before formalizing. | Advisor tab: a **CEO validation log** with gut-match rate, override rate, time to complete, and 90-day follow-up. **Leadership overrides** (with a required reason) are recorded in the Decision Matrix. **Editable decision thresholds** show a live preview of which opportunities would change category, and **calibration suggestions** are generated from the evidence. |
+
+**Two rules added while building these:**
+- **A failed risk gate cannot be overridden.** Leadership can override any other recommendation in either direction, but not a failed gate.
+- **Upgrading a saved workspace never brings in the worked example's data.** New sections start blank for a real company.
 
 **Positioning recommendation:** Go with **Option A (AI Strategic Integration Framework)** as the foundation. The Transform and Reinvent levels already leave room to grow into enterprise transformation without making every engagement a transformation program. It is also an easier first purchase for a CEO.
 
 ---
+
+## 8a. Foundations and operating model *(added)*
+
+These run alongside the five phases:
+
+| Component | Where | Purpose |
+|---|---|---|
+| Current AI use inventory + acceptable-use policy | Assess | Bring unsanctioned use into the open and put minimum controls in place before any pilot |
+| AI exposure check | Assess | Find revenue streams that AI-enabled competitors could undercut |
+| Company profile & edition | Assess | Calibrate depth (Essentials / Enterprise) and change capacity |
+| Decision rights | Operating Model | One accountable owner for each governance activity |
+| Portfolio review rhythm | Operating Model | A quarterly (Essentials) or monthly (Enterprise) review inside the leadership meeting cadence |
+| Workforce commitment & communication plan | Operating Model | A stated position on jobs, in writing, before the first pilot |
+| Change capacity & portfolio balance | Operating Model / Decision Matrix | No more pilots than the organization can absorb |
+
+The Overview shows a seven-point **Foundations** checklist that tracks these.
 
 ## 9. Reassessment triggers
 - Annual or quarterly strategic-plan refresh

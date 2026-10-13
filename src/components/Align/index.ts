@@ -5,3 +5,5 @@ export { IdentifyPhase } from './IdentifyPhase';
 export { GovernPhase } from './GovernPhase';
 export { NavigatePhase } from './NavigatePhase';
 export { DecisionMatrix } from './DecisionMatrix';
+export { OperatingModel } from './OperatingModel';
+export { AdvisorTab } from './AdvisorTab';

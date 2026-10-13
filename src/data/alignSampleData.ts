@@ -2,11 +2,22 @@
 // $8M. Prospects are plentiful; converting them into contracts is not.
 import type {
   AIOpportunity,
+  AIUsageRecord,
   AlignState,
   BusinessFunction,
   IntegrationLevel,
+  OperatingModel,
+  RevenueExposure,
   StrategicPriority,
+  ValidationSession,
 } from '../types/align';
+import { DEFAULT_THRESHOLDS } from './alignFramework';
+
+const daysFromToday = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+};
 
 export const samplePriorities: StrategicPriority[] = [
   {
@@ -136,6 +147,34 @@ function baseOpportunity(
     },
     measures: [],
     realization: { hoursFreedPerMonth: 0, redeployedTo: '', linkedOutcome: '' },
+    rolesAffected: 0,
+    reskillingPlan: '',
+    sourcing: {
+      approach: 'undecided',
+      scores: { dataHandling: 3, integrationFit: 3, totalCost: 3, exitPortability: 3, providerViability: 3, timeToValue: 3 },
+      rationale: '',
+    },
+    sustain: {
+      owner: '',
+      costReviewEveryDays: 90,
+      lastCostReview: '',
+      actualAnnualRunCost: 0,
+      accuracyCheckEveryDays: 30,
+      lastAccuracyCheck: '',
+      accuracySampleSize: 10,
+    },
+    override: null,
+  };
+}
+
+// Fills fields added in later versions so saved workspaces keep working.
+export function withOpportunityDefaults(o: Partial<AIOpportunity> & { id: string }): AIOpportunity {
+  const base = baseOpportunity(o.id, o.title ?? '', o.priorityId ?? '', o.businessFunction ?? 'operations', o.level ?? 'optimize');
+  return {
+    ...base,
+    ...o,
+    sourcing: { ...base.sourcing, ...o.sourcing, scores: { ...base.sourcing.scores, ...o.sourcing?.scores } },
+    sustain: { ...base.sustain, ...o.sustain },
   };
 }
 
@@ -200,6 +239,22 @@ const proposals: AIOpportunity = {
     hoursFreedPerMonth: 60,
     redeployedTo: 'Partner business-development meetings with qualified prospects',
     linkedOutcome: 'Pipeline +$400K; win rate +4 pts',
+  },
+  rolesAffected: 4,
+  reskillingPlan: 'Two half-day sessions on research prompting and fact-checking; weekly proposal review clinic for the first 60 days.',
+  sourcing: {
+    approach: 'buy',
+    scores: { dataHandling: 4, integrationFit: 4, totalCost: 4, exitPortability: 3, providerViability: 4, timeToValue: 5 },
+    rationale: 'Drafting assistance is a common capability, not a source of advantage. Our advantage is the proposal library, which stays in our own document store.',
+  },
+  sustain: {
+    owner: 'Director of Sales Operations',
+    costReviewEveryDays: 90,
+    lastCostReview: daysFromToday(-40),
+    actualAnnualRunCost: 19500,
+    accuracyCheckEveryDays: 30,
+    lastAccuracyCheck: daysFromToday(-45),
+    accuracySampleSize: 10,
   },
 };
 
@@ -286,6 +341,12 @@ const knowledge: AIOpportunity = {
     governanceReadiness: 2,
   },
   matrix: { strategicAlignment: 5, businessValue: 4, processDataReadiness: 2, feasibility: 2, adoptionReadiness: 3 },
+  rolesAffected: 12,
+  sourcing: {
+    approach: 'partner',
+    scores: { dataHandling: 2, integrationFit: 3, totalCost: 3, exitPortability: 2, providerViability: 3, timeToValue: 2 },
+    rationale: '',
+  },
 };
 
 const chatbot: AIOpportunity = {
@@ -372,9 +433,142 @@ const benchmarking: AIOpportunity = {
   },
 };
 
+const sampleInventory: AIUsageRecord[] = [
+  { id: 'u1', useCase: 'Drafting client emails and memos', team: 'Consulting', toolCategory: 'Free public chat assistant', dataSensitivity: 'confidential', sanctioned: false, usersApprox: 14 },
+  { id: 'u2', useCase: 'Pasting client spreadsheets for analysis', team: 'Analysts', toolCategory: 'Free public chat assistant', dataSensitivity: 'confidential', sanctioned: false, usersApprox: 5 },
+  { id: 'u3', useCase: 'Meeting transcription and summaries', team: 'All', toolCategory: 'Meeting-notes add-on', dataSensitivity: 'internal', sanctioned: false, usersApprox: 20 },
+  { id: 'u4', useCase: 'Proposal research and drafting (pilot)', team: 'Sales', toolCategory: 'Business-tier assistant', dataSensitivity: 'internal', sanctioned: true, usersApprox: 6 },
+  { id: 'u5', useCase: 'Social posts and website copy', team: 'Marketing', toolCategory: 'Writing assistant', dataSensitivity: 'public', sanctioned: true, usersApprox: 2 },
+];
+
+const sampleExposure: RevenueExposure[] = [
+  { id: 'x1', stream: 'Strategy engagements', revenueShare: 45, threat: 2, horizon: '3-plus-years', response: 'Differentiate on senior judgment and facilitation.' },
+  { id: 'x2', stream: 'Market research & benchmarking reports', revenueShare: 25, threat: 5, horizon: 'now', response: '' },
+  { id: 'x3', stream: 'Implementation support', revenueShare: 30, threat: 3, horizon: '1-2-years', response: 'Move from hourly billing to outcome-based fees.' },
+];
+
+const sampleOperatingModel: OperatingModel = {
+  decisionRights: {
+    setPriorities: { accountable: 'CEO', responsible: 'Leadership team', consulted: 'Board' },
+    approveInvestment: { accountable: 'CEO', responsible: 'CFO', consulted: 'Process owner' },
+    clearRiskGates: { accountable: '', responsible: 'Outside counsel', consulted: 'IT provider' },
+    runPilot: { accountable: 'Process owner', responsible: 'Pilot team', consulted: 'Frontline staff' },
+    scaleOrStop: { accountable: 'CEO', responsible: 'Process owner', consulted: 'CFO' },
+    policyAndInventory: { accountable: 'COO', responsible: 'Operations manager', consulted: 'All staff' },
+    portfolioReview: { accountable: 'CEO', responsible: 'COO', consulted: 'Leadership team' },
+  },
+  reviewCadence: 'quarterly',
+  nextReviewDate: daysFromToday(30),
+  workforceStance: 'redeploy-attrition',
+  workforceCommitment:
+    'No one will lose their job because of an AI pilot. Time AI frees up goes to client work and business development. Team size changes only through normal attrition.',
+  comms: {
+    whyBeforeWhat: true,
+    commitmentStated: true,
+    involveFrontline: true,
+    trainingPlan: false,
+    roleChanges: false,
+    feedbackChannel: false,
+    celebrateRedeployment: false,
+  },
+};
+
+// Illustrative sessions showing how the validation log is used.
+const sampleValidation: ValidationSession[] = [
+  {
+    id: 'v1', date: daysFromToday(-60), ceo: 'Example — CEO, engineering firm', industry: 'Engineering services', revenueBand: '10-50m',
+    minutesToComplete: 180, topPickMatchedGut: true, overrides: 1, opportunitiesScored: 6,
+    confusingQuestions: 'Confidence % felt arbitrary without examples.', followUp90: 'confirmed', notes: 'Pilot hit scale criteria at day 75.',
+  },
+  {
+    id: 'v2', date: daysFromToday(-20), ceo: 'Example — CEO, distribution company', industry: 'Wholesale distribution', revenueBand: '50-250m',
+    minutesToComplete: 260, topPickMatchedGut: false, overrides: 2, opportunitiesScored: 8,
+    confusingQuestions: 'Difference between process maturity and data readiness.', followUp90: 'pending',
+    notes: 'CEO favored a customer-facing bot; framework ranked inventory forecasting first.',
+  },
+];
+
 export const sampleAlignState: AlignState = {
   companyName: 'Meridian Advisory Group',
+  profile: { industry: 'Professional services', revenueBand: 'under-10m', employees: 32, edition: 'essentials', maxConcurrentPilots: null },
   priorities: samplePriorities,
   opportunities: [proposals, pipeline, marginForecast, knowledge, chatbot, clientData, benchmarking],
-  lastReviewed: new Date().toISOString().split('T')[0],
+  aiInventory: sampleInventory,
+  policy: {
+    policyOwner: true,
+    approvedTools: true,
+    dataRules: false,
+    humanReview: true,
+    clientDisclosure: false,
+    ipOwnership: false,
+    incidentReporting: false,
+    trainingRequired: false,
+  },
+  exposure: sampleExposure,
+  operatingModel: sampleOperatingModel,
+  thresholds: DEFAULT_THRESHOLDS,
+  validation: sampleValidation,
+  ipChecks: {
+    trademarkSearch: false,
+    distinctiveName: false,
+    methodDocumented: true,
+    materialsCopyright: false,
+    licensingTerms: false,
+    validatedWithCEOs: false,
+  },
+  lastReviewed: daysFromToday(0),
+};
+
+// Blank versions of the sections added after v1, used when upgrading a saved
+// workspace so a user's own company never inherits the worked example's data.
+const blankRight = { accountable: '', responsible: '', consulted: '' };
+
+export const blankWorkspaceSections: Omit<AlignState, 'companyName' | 'priorities' | 'opportunities' | 'lastReviewed'> = {
+  profile: { industry: '', revenueBand: 'under-10m', employees: 0, edition: 'essentials', maxConcurrentPilots: null },
+  aiInventory: [],
+  policy: {
+    policyOwner: false,
+    approvedTools: false,
+    dataRules: false,
+    humanReview: false,
+    clientDisclosure: false,
+    ipOwnership: false,
+    incidentReporting: false,
+    trainingRequired: false,
+  },
+  exposure: [],
+  operatingModel: {
+    decisionRights: {
+      setPriorities: blankRight,
+      approveInvestment: blankRight,
+      clearRiskGates: blankRight,
+      runPilot: blankRight,
+      scaleOrStop: blankRight,
+      policyAndInventory: blankRight,
+      portfolioReview: blankRight,
+    },
+    reviewCadence: 'quarterly',
+    nextReviewDate: '',
+    workforceStance: 'undecided',
+    workforceCommitment: '',
+    comms: {
+      whyBeforeWhat: false,
+      commitmentStated: false,
+      involveFrontline: false,
+      trainingPlan: false,
+      roleChanges: false,
+      feedbackChannel: false,
+      celebrateRedeployment: false,
+    },
+  },
+  thresholds: DEFAULT_THRESHOLDS,
+  validation: [],
+  ipChecks: {
+    trademarkSearch: false,
+    distinctiveName: false,
+    methodDocumented: false,
+    materialsCopyright: false,
+    licensingTerms: false,
+    validatedWithCEOs: false,
+  },
 };

@@ -34,12 +34,17 @@ export function ScoreSelect({
   value,
   onChange,
   label,
+  invert = false,
 }: {
   value: Score;
   onChange: (s: Score) => void;
   label: string;
+  // For risk-style scales where 5 is bad.
+  invert?: boolean;
 }) {
-  const color = value <= 2 ? 'bg-red-500' : value === 3 ? 'bg-amber-500' : 'bg-emerald-500';
+  const good = invert ? value <= 2 : value >= 4;
+  const bad = invert ? value >= 4 : value <= 2;
+  const color = bad ? 'bg-red-500' : good ? 'bg-emerald-500' : 'bg-amber-500';
   return (
     <div className="flex gap-1" role="radiogroup" aria-label={label}>
       {SCORES.map((s) => (
@@ -183,6 +188,35 @@ export function Callout({
     <div className={`border rounded-lg p-4 ${tones[tone]}`}>
       <p className="font-semibold text-sm">{title}</p>
       <div className="text-sm mt-1 opacity-90">{children}</div>
+    </div>
+  );
+}
+
+export function SubTabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { key: T; label: string; alert?: boolean }[];
+  value: T;
+  onChange: (t: T) => void;
+}) {
+  return (
+    <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          type="button"
+          onClick={() => onChange(t.key)}
+          aria-current={value === t.key ? 'page' : undefined}
+          className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+            value === t.key ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          {t.label}
+          {t.alert && <span className="inline-block w-2 h-2 bg-red-500 rounded-full ml-2 align-middle" />}
+        </button>
+      ))}
     </div>
   );
 }

@@ -5,14 +5,23 @@ import { useAlign } from '../../context/AlignContext';
 import type {
   AIOpportunity,
   GateStatus,
+  SourcingApproach,
+  SourcingCriterion,
   IntegrationDesign,
   OpportunityStage,
   OversightLevel,
   RiskGate,
 } from '../../types/align';
-import { GATE_STATUS_LABELS, OVERSIGHT_LEVELS, PHASES, RISK_GATES } from '../../data/alignFramework';
-import { designGaps, evaluateGates, type GateOutcome } from '../../utils/alignScoring';
-import { Callout, NumberField, OpportunityPicker, PhaseHeader, TextField } from './shared';
+import {
+  GATE_STATUS_LABELS,
+  OVERSIGHT_LEVELS,
+  PHASES,
+  RISK_GATES,
+  SOURCING_APPROACHES,
+  SOURCING_CRITERIA,
+} from '../../data/alignFramework';
+import { designGaps, evaluateGates, sourcingScore, sourcingWarnings, type GateOutcome } from '../../utils/alignScoring';
+import { Callout, NumberField, OpportunityPicker, PhaseHeader, ScoreSelect, TextField } from './shared';
 import { inputClass } from './helpers';
 
 const GATE_OUTCOME_DISPLAY: Record<GateOutcome, { label: string; variant: 'success' | 'warning' | 'danger' | 'default' }> = {
@@ -65,6 +74,8 @@ export function GovernPhase() {
           <div className="lg:col-span-3 space-y-6">
             <RiskGates opportunity={selected} onChange={updateOpportunity} />
             <BusinessCase opportunity={selected} onChange={updateOpportunity} />
+            <WorkforceImpact opportunity={selected} onChange={updateOpportunity} />
+            <Sourcing opportunity={selected} onChange={updateOpportunity} />
           </div>
         )}
       </div>
@@ -209,6 +220,88 @@ function BusinessCase({ opportunity: o, onChange }: { opportunity: AIOpportunity
           </Callout>
         )}
       </div>
+    </Card>
+  );
+}
+
+function WorkforceImpact({ opportunity: o, onChange }: { opportunity: AIOpportunity; onChange: (o: AIOpportunity) => void }) {
+  return (
+    <Card padding="lg">
+      <CardHeader
+        title="Workforce impact"
+        subtitle="Fear of job loss is the most common reason adoption stalls. Name the impact so it can be managed."
+      />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <NumberField label="Roles affected" value={o.rolesAffected} onChange={(v) => onChange({ ...o, rolesAffected: Math.max(0, Math.round(v)) })} />
+        <div className="md:col-span-3">
+          <TextField
+            label="Reskilling & support plan"
+            value={o.reskillingPlan}
+            onChange={(v) => onChange({ ...o, reskillingPlan: v })}
+            multiline
+            placeholder="Training, time allowance, coaching, and how changed roles will be described"
+          />
+        </div>
+      </div>
+      <p className="text-xs text-slate-500 mt-3">
+        The company-wide workforce commitment and communication plan are on the Operating Model tab.
+      </p>
+    </Card>
+  );
+}
+
+function Sourcing({ opportunity: o, onChange }: { opportunity: AIOpportunity; onChange: (o: AIOpportunity) => void }) {
+  const sourcing = o.sourcing;
+  const warnings = sourcingWarnings(o);
+  const set = (patch: Partial<typeof sourcing>) => onChange({ ...o, sourcing: { ...sourcing, ...patch } });
+
+  return (
+    <Card padding="lg">
+      <CardHeader
+        title="Build, buy, or partner"
+        subtitle="Decide this only after the business case and risk gates. Score the approach, not a product."
+        action={<Badge variant="default" size="md">Fit {sourcingScore(o).toFixed(1)} / 5</Badge>}
+      />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+        {(Object.keys(SOURCING_APPROACHES) as SourcingApproach[]).map((a) => (
+          <button
+            key={a}
+            type="button"
+            onClick={() => set({ approach: a })}
+            className={`text-left border-2 rounded-lg p-3 transition ${sourcing.approach === a ? 'border-blue-500 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300'}`}
+          >
+            <p className="text-sm font-semibold text-slate-900">{SOURCING_APPROACHES[a].label}</p>
+            <p className="text-xs text-slate-500 mt-1">{SOURCING_APPROACHES[a].whenFits}</p>
+          </button>
+        ))}
+      </div>
+      <div className="space-y-3">
+        {(Object.keys(SOURCING_CRITERIA) as SourcingCriterion[]).map((k) => (
+          <div key={k} className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100 last:border-0">
+            <div>
+              <p className="text-sm font-medium text-slate-900">{SOURCING_CRITERIA[k].label}</p>
+              <p className="text-xs text-slate-500">{SOURCING_CRITERIA[k].question}</p>
+            </div>
+            <ScoreSelect
+              label={SOURCING_CRITERIA[k].label}
+              value={sourcing.scores[k]}
+              onChange={(s) => set({ scores: { ...sourcing.scores, [k]: s } })}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-4">
+        <TextField label="Rationale" value={sourcing.rationale} onChange={(v) => set({ rationale: v })} multiline />
+      </div>
+      {warnings.length > 0 && (
+        <div className="mt-4">
+          <Callout tone="warning" title="Sourcing cautions">
+            <ul className="list-disc list-inside">
+              {warnings.map((w) => <li key={w}>{w}</li>)}
+            </ul>
+          </Callout>
+        </div>
+      )}
     </Card>
   );
 }

@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Send, Check } from 'lucide-react';
+import { Send, Check, UserCheck, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, Badge, Button } from '../ui';
 import { useAlign } from '../../context/AlignContext';
 import { useCEO } from '../../context/CEOContext';
 import type { AIOpportunity, DecisionCategory, MatrixCriterion } from '../../types/align';
 import type { Decision } from '../../types';
 import { DECISION_CATEGORIES, MATRIX_CRITERIA } from '../../data/alignFramework';
-import { assessReadiness, decide, evaluateGates, summarizeEconomics } from '../../utils/alignScoring';
-import { DecisionBadge, ReadinessBadge, ScoreSelect } from './shared';
-import { formatMoney } from './helpers';
+import { assessReadiness, capacityStatus, decide, evaluateGates, finalCategory, summarizeEconomics } from '../../utils/alignScoring';
+import { Callout, DecisionBadge, ReadinessBadge, ScoreSelect } from './shared';
+import { formatMoney, inputClass } from './helpers';
 
 const CATEGORY_ORDER: DecisionCategory[] = ['invest-now', 'build-readiness', 'pilot-validate', 'do-not-pursue'];
 
@@ -20,35 +20,43 @@ const CATEGORY_PRIORITY: Record<DecisionCategory, Decision['priority']> = {
 };
 
 export function DecisionMatrix() {
-  const { opportunities, priorities, updateOpportunity, dispatch } = useAlign();
+  const state = useAlign();
+  const { opportunities, priorities, updateOpportunity, dispatch, thresholds: t } = state;
   const { addDecision, decisions } = useCEO();
   const [sent, setSent] = useState<Set<string>>(new Set());
+  const capacity = capacityStatus(state);
 
   const rows = opportunities
-    .map((o) => ({ o, d: decide(o) }))
+    .map((o) => {
+      const d = decide(o, t);
+      return { o, d, final: finalCategory(o, t) };
+    })
     .sort(
-      (a, b) =>
-        CATEGORY_ORDER.indexOf(a.d.category) - CATEGORY_ORDER.indexOf(b.d.category) || b.d.score - a.d.score,
+      (a, b) => CATEGORY_ORDER.indexOf(a.final) - CATEGORY_ORDER.indexOf(b.final) || b.d.score - a.d.score,
     );
 
   const sendToDecisionFlow = (o: AIOpportunity) => {
-    const d = decide(o);
+    const d = decide(o, t);
+    const category = finalCategory(o, t);
+    const overrideNote = o.override
+      ? ` Leadership override from ${DECISION_CATEGORIES[d.category].label}: ${o.override.reason}.`
+      : '';
     const priority = priorities.find((p) => p.id === o.priorityId);
     const now = new Date();
     const deadline = new Date(now);
     deadline.setDate(now.getDate() + 14);
     addDecision({
       id: `align-${o.id}-${now.getTime()}`,
-      title: `AI: ${DECISION_CATEGORIES[d.category].label} — ${o.title}`,
+      title: `AI: ${DECISION_CATEGORIES[category].label} — ${o.title}`,
       description: d.nextAction,
       owner: o.design.processOwner || priority?.executiveOwner || 'CEO',
       deadline: deadline.toISOString().split('T')[0],
-      priority: CATEGORY_PRIORITY[d.category],
+      priority: CATEGORY_PRIORITY[category],
       status: 'pending',
       category: 'strategic',
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      context: `ALIGN weighted score ${d.score}/100. Strategic priority: ${priority?.name ?? 'unlinked'}. ${d.reasons.join('. ')}.`,
+      context: `ALIGN weighted score ${d.score}/100. Strategic priority: ${priority?.name ?? 'unlinked'}. ${d.reasons.join('. ')}.${overrideNote}`,
     });
     setSent((s) => new Set(s).add(o.id));
   };
@@ -75,11 +83,18 @@ export function DecisionMatrix() {
         {CATEGORY_ORDER.map((c) => (
           <Card key={c} padding="sm">
             <DecisionBadge category={c} />
-            <p className="text-3xl font-bold text-slate-900 mt-2">{rows.filter((r) => r.d.category === c).length}</p>
+            <p className="text-3xl font-bold text-slate-900 mt-2">{rows.filter((r) => r.final === c).length}</p>
             <p className="text-xs text-slate-500">{DECISION_CATEGORIES[c].description}</p>
           </Card>
         ))}
       </div>
+
+      {capacity.overCapacity && (
+        <Callout tone="danger" title={`Over change capacity: ${capacity.active + capacity.queued} pilots for a limit of ${capacity.limit}`}>
+          {capacity.active} running and {capacity.queued} approved (Invest Now) but not started. Sequence them: start the
+          highest-scoring ones first and queue the rest, or raise the limit deliberately on Assess → Company profile.
+        </Callout>
+      )}
 
       <Card padding="lg">
         <CardHeader
@@ -92,7 +107,7 @@ export function DecisionMatrix() {
           }
         />
         <div className="divide-y divide-slate-100">
-          {rows.map(({ o, d }) => {
+          {rows.map(({ o, d, final }) => {
             const gates = evaluateGates(o);
             const econ = summarizeEconomics(o);
             const alreadySent = sent.has(o.id) || decisions.some((x) => x.id.startsWith(`align-${o.id}-`));
@@ -133,7 +148,13 @@ export function DecisionMatrix() {
                     <p className="text-xs text-slate-400">/ 100</p>
                   </div>
                   <div>
-                    <DecisionBadge category={d.category} />
+                    <DecisionBadge category={final} />
+                    {o.override && (
+                      <p className="text-xs text-purple-700 mt-1 flex gap-1">
+                        <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                        Leadership override (framework said {DECISION_CATEGORIES[d.category].label}): {o.override.reason}
+                      </p>
+                    )}
                     <ul className="text-xs text-slate-600 mt-1 space-y-0.5">
                       {d.reasons.slice(0, 3).map((r) => (
                         <li key={r}>• {r}</li>
@@ -149,6 +170,7 @@ export function DecisionMatrix() {
                       {alreadySent ? <Check className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
                       {alreadySent ? 'In Decision Flow' : 'Send to Decision Flow'}
                     </button>
+                    <OverrideControl opportunity={o} systemCategory={d.category} onChange={updateOpportunity} />
                   </div>
                 </div>
               </div>
@@ -161,14 +183,72 @@ export function DecisionMatrix() {
         <CardHeader title="Decision rules" subtitle="Applied in this order — transparent so leadership can challenge them" />
         <ol className="list-decimal list-inside text-sm text-slate-700 space-y-1.5">
           <li>Any risk gate <strong>fails</strong> → Do Not Pursue (redesign or close).</li>
-          <li>Strategic alignment + business value average below 2.5, or risk-adjusted value below run cost → Do Not Pursue.</li>
+          <li>Strategic alignment + business value average below {t.doNotPursueValue}, or risk-adjusted value below run cost → Do Not Pursue.</li>
           <li>Outcome undefined (strategic clarity ≤ 2) → Defer / redesign.</li>
-          <li>High value (≥ 3.5) but readiness below threshold or a critical deficiency → Build Readiness.</li>
+          <li>High value (≥ {t.highValue}) but readiness below threshold or a critical deficiency → Build Readiness.</li>
           <li>Risk gates not yet assessed → no pilot until they are.</li>
-          <li>High value, Ready to Pilot, confidence ≥ 60%, score ≥ 70 → Invest Now.</li>
+          <li>High value, Ready to Pilot, confidence ≥ {Math.round(t.minConfidence * 100)}%, score ≥ {t.investScore} → Invest Now.</li>
           <li>Everything else with promise → Pilot &amp; Validate cheaply before committing.</li>
+          <li>Leadership may override any recommendation, with a written reason. Overrides feed calibration on the Advisor tab.</li>
+          <li>Invest Now approvals plus running pilots must fit the change-capacity limit ({capacity.limit}).</li>
         </ol>
       </Card>
+    </div>
+  );
+}
+
+function OverrideControl({
+  opportunity: o,
+  systemCategory,
+  onChange,
+}: {
+  opportunity: AIOpportunity;
+  systemCategory: DecisionCategory;
+  onChange: (o: AIOpportunity) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState<DecisionCategory>(o.override?.category ?? systemCategory);
+  const [reason, setReason] = useState(o.override?.reason ?? '');
+  const blockedByGate = evaluateGates(o) === 'blocked';
+
+  if (!open) {
+    return (
+      <div className="mt-1 flex gap-3">
+        <button type="button" className="text-xs text-slate-500 hover:text-slate-800" onClick={() => setOpen(true)}>
+          {o.override ? 'Edit override' : 'Override…'}
+        </button>
+        {o.override && (
+          <button type="button" className="text-xs text-slate-500 hover:text-red-600" onClick={() => onChange({ ...o, override: null })}>
+            Remove override
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const upgradingPastGate = blockedByGate && category !== 'do-not-pursue';
+  return (
+    <div className="mt-2 p-3 bg-slate-50 rounded-lg space-y-2">
+      <select aria-label="Override category" className={`${inputClass} !py-1.5`} value={category} onChange={(e) => setCategory(e.target.value as DecisionCategory)}>
+        {CATEGORY_ORDER.map((c) => <option key={c} value={c}>{DECISION_CATEGORIES[c].label}</option>)}
+      </select>
+      <input aria-label="Override reason" className={`${inputClass} !py-1.5`} placeholder="Reason (required)" value={reason} onChange={(e) => setReason(e.target.value)} />
+      {upgradingPastGate && (
+        <p className="text-xs text-red-700 flex gap-1"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />A risk gate failed. Risk gates cannot be overridden; fix the risk first.</p>
+      )}
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          disabled={!reason.trim() || category === systemCategory || upgradingPastGate}
+          onClick={() => {
+            onChange({ ...o, override: { category, reason: reason.trim(), date: new Date().toISOString().split('T')[0] } });
+            setOpen(false);
+          }}
+        >
+          Save
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+      </div>
     </div>
   );
 }

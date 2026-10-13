@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CEOProvider } from './context/CEOContext';
 import { AlignProvider } from './context/AlignContext';
 import { CEOCommandCenter } from './pages/CEOCommandCenter';
@@ -12,6 +12,13 @@ function initialView(): AppView {
 
 function App() {
   const [view, setView] = useState<AppView>(initialView);
+
+  // Keep the view in sync with the URL hash (links, back/forward buttons).
+  useEffect(() => {
+    const onHashChange = () => setView(initialView());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
 
   const navigate = (next: AppView) => {
     setView(next);

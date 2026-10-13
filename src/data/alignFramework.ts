@@ -2,8 +2,20 @@
 // questions, scoring rubrics, gates, and decision definitions.
 import type {
   BusinessFunction,
+  CommsStep,
   ConstraintType,
+  DataSensitivity,
   DecisionCategory,
+  DecisionThresholds,
+  Edition,
+  GovernanceActivity,
+  IPCheck,
+  PolicyElement,
+  RevenueBand,
+  SourcingApproach,
+  SourcingCriterion,
+  ValidationSession,
+  WorkforceStance,
   GateStatus,
   IntegrationLevel,
   MatrixCriterion,
@@ -371,3 +383,129 @@ export const CONTRAST_TABLE: [string, string][] = [
   ['How many employees are using AI?', 'How is AI improving enterprise performance?'],
   ['What new technology is available?', 'What new business capabilities should we develop?'],
 ];
+
+// ── Size calibration ─────────────────────────────────────────────────────────
+
+export const REVENUE_BANDS: Record<RevenueBand, { label: string; defaultPilots: number; edition: Edition }> = {
+  'under-10m': { label: 'Under $10M', defaultPilots: 2, edition: 'essentials' },
+  '10-50m': { label: '$10M – $50M', defaultPilots: 3, edition: 'essentials' },
+  '50-250m': { label: '$50M – $250M', defaultPilots: 5, edition: 'enterprise' },
+  'over-250m': { label: 'Over $250M', defaultPilots: 8, edition: 'enterprise' },
+};
+
+export const EDITIONS: Record<Edition, { label: string; description: string; focus: string[] }> = {
+  essentials: {
+    label: 'ALIGN Essentials',
+    description: 'One leadership workshop, top three opportunities, one governed pilot at a time. Built for firms without a CTO or data team.',
+    focus: ['Top 3 opportunities only', 'Acceptable-use policy first', 'One pilot, then the next', 'Quarterly review in the existing leadership meeting'],
+  },
+  enterprise: {
+    label: 'ALIGN Enterprise',
+    description: 'Full diagnostic across functions, a managed portfolio of pilots, formal decision rights, and monthly governance.',
+    focus: ['Full functional sweep', 'Formal decision rights', 'Portfolio balance across levels', 'Monthly AI steering review'],
+  },
+};
+
+// ── Current AI use & acceptable-use policy ───────────────────────────────────
+
+export const DATA_SENSITIVITY: Record<DataSensitivity, { label: string; risk: 0 | 1 | 2 | 3 }> = {
+  public: { label: 'Public', risk: 0 },
+  internal: { label: 'Internal', risk: 1 },
+  confidential: { label: 'Client / confidential', risk: 3 },
+  personal: { label: 'Personal data', risk: 3 },
+};
+
+export const POLICY_ELEMENTS: Record<PolicyElement, { label: string; detail: string }> = {
+  policyOwner: { label: 'Named policy owner', detail: 'One executive owns AI use policy and the inventory.' },
+  approvedTools: { label: 'Approved tool categories', detail: 'Which kinds of AI tools are allowed, and the process to request others.' },
+  dataRules: { label: 'Data classification rules', detail: 'What data may never be entered into which tools (client, personal, financial).' },
+  humanReview: { label: 'Human review of outputs', detail: 'AI output is reviewed by a person before it reaches a client or decision.' },
+  clientDisclosure: { label: 'Client disclosure', detail: 'When and how clients are told AI was used in their work.' },
+  ipOwnership: { label: 'IP & confidentiality', detail: 'Ownership of AI-assisted work product; contract terms respected.' },
+  incidentReporting: { label: 'Incident reporting', detail: 'How to report a data leak, wrong output, or misuse — without blame.' },
+  trainingRequired: { label: 'Training requirement', detail: 'Minimum training before using AI on company work.' },
+};
+
+// ── Sourcing (tool-agnostic) ─────────────────────────────────────────────────
+
+export const SOURCING_APPROACHES: Record<SourcingApproach, { label: string; whenFits: string }> = {
+  undecided: { label: 'Undecided', whenFits: 'Decide only after the business case and risk gates are complete.' },
+  buy: { label: 'Buy', whenFits: 'The capability is common across industries and not a source of advantage.' },
+  build: { label: 'Build', whenFits: 'The capability depends on proprietary data or process and is a source of advantage.' },
+  partner: { label: 'Partner', whenFits: 'Advantage matters but internal capability is thin; transfer knowledge over time.' },
+};
+
+export const SOURCING_CRITERIA: Record<SourcingCriterion, { label: string; question: string }> = {
+  dataHandling: { label: 'Data handling', question: 'Where does our data go, who can see it, and is it used to train others’ models?' },
+  integrationFit: { label: 'Integration fit', question: 'Does it fit our existing systems and the redesigned workflow?' },
+  totalCost: { label: 'Total cost of ownership', question: 'Licences, usage, integration, oversight time — over three years?' },
+  exitPortability: { label: 'Exit & portability', question: 'Can we leave with our data, prompts, and configurations intact?' },
+  providerViability: { label: 'Provider viability', question: 'Will the provider (or our team) still support this in three years?' },
+  timeToValue: { label: 'Time to value', question: 'How quickly can the pilot produce measurable results?' },
+};
+
+// ── Operating model ──────────────────────────────────────────────────────────
+
+export const GOVERNANCE_ACTIVITIES: Record<GovernanceActivity, string> = {
+  setPriorities: 'Set strategic priorities AI must serve',
+  approveInvestment: 'Approve Invest Now / pilot funding',
+  clearRiskGates: 'Clear risk gates',
+  runPilot: 'Run the pilot & capture baseline',
+  scaleOrStop: 'Scale / iterate / stop decision',
+  policyAndInventory: 'Maintain AI policy & usage inventory',
+  portfolioReview: 'Run the AI portfolio review',
+};
+
+export const WORKFORCE_STANCES: Record<WorkforceStance, { label: string; guidance: string }> = {
+  undecided: {
+    label: 'Not yet decided',
+    guidance: 'Silence is read as a plan to cut jobs. Decide and state a position before the first pilot.',
+  },
+  redeploy: {
+    label: 'Redeploy capacity to growth',
+    guidance: 'Freed time moves to revenue, quality, and client work. Strongest support for adoption.',
+  },
+  'redeploy-attrition': {
+    label: 'Redeploy; adjust headcount only through natural attrition',
+    guidance: 'Honest and credible for most mid-market firms. Say it plainly.',
+  },
+  reduce: {
+    label: 'Reduce headcount where work disappears',
+    guidance: 'Legitimate, but expect resistance. Be transparent, early, and generous; never let a pilot be the announcement.',
+  },
+};
+
+export const COMMS_STEPS: Record<CommsStep, string> = {
+  whyBeforeWhat: 'Explain the business priority before the technology',
+  commitmentStated: 'State the workforce commitment in writing',
+  involveFrontline: 'Involve the people who do the work in redesigning it',
+  trainingPlan: 'Publish the training plan and time allowance',
+  roleChanges: 'Describe how roles and decision rights change',
+  feedbackChannel: 'Open a channel for concerns and errors',
+  celebrateRedeployment: 'Share stories of where freed time went',
+};
+
+// ── Advisor: calibration & IP ────────────────────────────────────────────────
+
+export const DEFAULT_THRESHOLDS: DecisionThresholds = {
+  highValue: 3.5,
+  investScore: 70,
+  minConfidence: 0.6,
+  doNotPursueValue: 2.5,
+};
+
+export const FOLLOW_UP_LABELS: Record<ValidationSession['followUp90'], string> = {
+  pending: 'Pending',
+  confirmed: 'Predictions held',
+  mixed: 'Mixed',
+  contradicted: 'Predictions wrong',
+};
+
+export const IP_CHECKS: Record<IPCheck, { label: string; detail: string }> = {
+  trademarkSearch: { label: 'Trademark search completed', detail: '"ALIGN" is widely used; search before using ™ or filing ®.' },
+  distinctiveName: { label: 'Distinctive name or qualifier chosen', detail: 'e.g. "ALIGN AI Integration Method" or a coined name.' },
+  methodDocumented: { label: 'Method documented and dated', detail: 'A versioned methodology document establishes authorship.' },
+  materialsCopyright: { label: 'Materials marked ©', detail: 'Canvas, diagnostic, matrix, and workshop materials.' },
+  licensingTerms: { label: 'Client licensing terms defined', detail: 'What clients may reuse internally vs. resell.' },
+  validatedWithCEOs: { label: 'Validated with 5–8 CEOs', detail: 'Formalize name and weights only after calibration.' },
+};

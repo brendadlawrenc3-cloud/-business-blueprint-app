@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { MainLayout } from '../components/Layout';
 import {
+  AdvisorTab,
   AlignOverview,
   AssessPhase,
   DecisionMatrix,
@@ -9,6 +10,7 @@ import {
   IdentifyPhase,
   LocatePhase,
   NavigatePhase,
+  OperatingModel,
 } from '../components/Align';
 import { useAlign } from '../context/AlignContext';
 import type { AlignView } from '../types/align';
@@ -22,6 +24,8 @@ const TABS: { view: AlignView; letter?: string; label: string }[] = [
   { view: 'govern', letter: 'G', label: 'Govern · How' },
   { view: 'navigate', letter: 'N', label: 'Navigate · What' },
   { view: 'decide', label: 'Decision Matrix' },
+  { view: 'operating-model', label: 'Operating Model' },
+  { view: 'advisor', label: 'Advisor' },
 ];
 
 interface AlignFrameworkProps {
@@ -42,7 +46,7 @@ export function AlignFramework({ activeView, onNavigate }: AlignFrameworkProps) 
     >
       <div className="space-y-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <nav className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 overflow-x-auto" aria-label="ALIGN phases">
+          <nav className="flex flex-wrap gap-1 bg-white border border-slate-200 rounded-xl p-1" aria-label="ALIGN phases">
             {TABS.map((tab) => (
               <button
                 key={tab.view}
@@ -85,6 +89,8 @@ export function AlignFramework({ activeView, onNavigate }: AlignFrameworkProps) 
         {view === 'govern' && <GovernPhase />}
         {view === 'navigate' && <NavigatePhase />}
         {view === 'decide' && <DecisionMatrix />}
+        {view === 'operating-model' && <OperatingModel />}
+        {view === 'advisor' && <AdvisorTab />}
       </div>
     </MainLayout>
   );

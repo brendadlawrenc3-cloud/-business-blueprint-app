@@ -4,8 +4,9 @@ import { Card, CardHeader, Badge, Button, ProgressBar } from '../ui';
 import { useAlign } from '../../context/AlignContext';
 import type { ConstraintType, StrategicPriority } from '../../types/align';
 import { CONSTRAINT_TYPES, PHASES } from '../../data/alignFramework';
-import { constraintFit, priorityProgress } from '../../utils/alignScoring';
-import { Callout, PhaseHeader, TextField } from './shared';
+import { constraintFit, exposureSummary, inventoryRisk, priorityProgress } from '../../utils/alignScoring';
+import { Callout, PhaseHeader, SubTabs, TextField } from './shared';
+import { CurrentUseSection, ExposureSection, ProfileSection } from './AssessFoundations';
 import { inputClass } from './helpers';
 
 const FIT_DISPLAY = {
@@ -14,7 +15,33 @@ const FIT_DISPLAY = {
   'non-ai': { label: 'Not an AI problem', variant: 'danger' as const, icon: XCircle },
 };
 
+type AssessTab = 'priorities' | 'current-use' | 'exposure' | 'profile';
+
 export function AssessPhase() {
+  const { aiInventory, exposure } = useAlign();
+  const [tab, setTab] = useState<AssessTab>('priorities');
+  return (
+    <div className="space-y-6">
+      <PhaseHeader letter="A" />
+      <SubTabs<AssessTab>
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { key: 'priorities', label: 'Strategic priorities' },
+          { key: 'current-use', label: 'Current AI use & policy', alert: inventoryRisk(aiInventory).highRisk.length > 0 },
+          { key: 'exposure', label: 'Competitive exposure', alert: exposureSummary(exposure).unanswered.length > 0 },
+          { key: 'profile', label: 'Company profile & capacity' },
+        ]}
+      />
+      {tab === 'priorities' && <PrioritiesSection />}
+      {tab === 'current-use' && <CurrentUseSection />}
+      {tab === 'exposure' && <ExposureSection />}
+      {tab === 'profile' && <ProfileSection />}
+    </div>
+  );
+}
+
+function PrioritiesSection() {
   const { priorities, opportunities, updatePriority, dispatch } = useAlign();
   const [editingId, setEditingId] = useState<string | null>(null);
   const phase = PHASES[0];
@@ -42,8 +69,6 @@ export function AssessPhase() {
 
   return (
     <div className="space-y-6">
-      <PhaseHeader letter="A" />
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2" padding="lg">
           <CardHeader

@@ -4,9 +4,9 @@ import { Card, CardHeader, Badge, Button, ProgressBar } from '../ui';
 import { useAlign } from '../../context/AlignContext';
 import type { AIOpportunity, PerformanceCategory, PerformanceMeasure } from '../../types/align';
 import { PERFORMANCE_CATEGORIES, PHASES } from '../../data/alignFramework';
-import { measureProgress, pilotVerdict, realizationStatus, type PilotVerdict } from '../../utils/alignScoring';
-import { Callout, OpportunityPicker, PhaseHeader, TextField } from './shared';
-import { inputClass } from './helpers';
+import { measureProgress, pilotVerdict, realizationStatus, sustainAlerts, type PilotVerdict } from '../../utils/alignScoring';
+import { Callout, NumberField, OpportunityPicker, PhaseHeader, TextField } from './shared';
+import { formatMoney, inputClass } from './helpers';
 
 const VERDICTS: Record<PilotVerdict, { label: string; variant: 'success' | 'warning' | 'danger' | 'default'; text: string }> = {
   scale: { label: 'Scale', variant: 'success', text: 'Targets largely met and efficiency linked to outcomes. Expand deliberately.' },
@@ -37,7 +37,13 @@ export function NavigatePhase() {
             onSelect={setSelectedId}
             renderMeta={(o) => {
               const v = VERDICTS[pilotVerdict(o)];
-              return <Badge variant={v.variant}>{v.label}</Badge>;
+              const alerts = sustainAlerts(o).length;
+              return (
+                <div className="flex gap-1 flex-wrap">
+                  <Badge variant={v.variant}>{v.label}</Badge>
+                  {alerts > 0 && <Badge variant="danger">{alerts} sustain alert{alerts > 1 ? 's' : ''}</Badge>}
+                </div>
+              );
             }}
           />
         </Card>
@@ -46,6 +52,7 @@ export function NavigatePhase() {
           <div className="lg:col-span-3 space-y-6">
             <Scorecard opportunity={selected} onChange={updateOpportunity} />
             <Realization opportunity={selected} onChange={updateOpportunity} />
+            <Sustain opportunity={selected} onChange={updateOpportunity} />
           </div>
         )}
       </div>
@@ -208,6 +215,54 @@ function Realization({ opportunity: o, onChange }: { opportunity: AIOpportunity;
         )}
         {status === 'not-applicable' && (
           <p className="text-sm text-slate-500">Record freed capacity here if this initiative saves time.</p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function Sustain({ opportunity: o, onChange }: { opportunity: AIOpportunity; onChange: (o: AIOpportunity) => void }) {
+  const s = o.sustain;
+  const alerts = sustainAlerts(o);
+  const set = (patch: Partial<typeof s>) => onChange({ ...o, sustain: { ...s, ...patch } });
+  const today = new Date().toISOString().split('T')[0];
+
+  return (
+    <Card padding="lg">
+      <CardHeader
+        title="Sustain plan"
+        subtitle="After the pilot: AI accuracy drifts, usage costs creep up, and owners move on"
+      />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <TextField label="Long-term owner" value={s.owner} onChange={(v) => set({ owner: v })} />
+        <NumberField label="Actual annual run cost ($)" value={s.actualAnnualRunCost} onChange={(v) => set({ actualAnnualRunCost: v })} step={500} />
+        <div className="text-sm self-end pb-2 text-slate-500">
+          Planned: <span className="font-semibold text-slate-800">{formatMoney(o.economics.annualRunCost)}</span>/yr
+        </div>
+        <NumberField label="Cost review every (days)" value={s.costReviewEveryDays} onChange={(v) => set({ costReviewEveryDays: Math.max(1, v) })} step={30} />
+        <label className="block">
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Last cost review</span>
+          <input type="date" className={`${inputClass} mt-1`} value={s.lastCostReview} onChange={(e) => set({ lastCostReview: e.target.value })} />
+        </label>
+        <button type="button" className="self-end text-sm font-medium text-blue-600 hover:text-blue-700 text-left pb-2" onClick={() => set({ lastCostReview: today })}>
+          Mark cost reviewed today
+        </button>
+        <NumberField label="Accuracy check every (days)" value={s.accuracyCheckEveryDays} onChange={(v) => set({ accuracyCheckEveryDays: Math.max(1, v) })} step={15} />
+        <label className="block">
+          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Last accuracy check</span>
+          <input type="date" className={`${inputClass} mt-1`} value={s.lastAccuracyCheck} onChange={(e) => set({ lastAccuracyCheck: e.target.value })} />
+        </label>
+        <NumberField label="Outputs sampled per check" value={s.accuracySampleSize} onChange={(v) => set({ accuracySampleSize: Math.max(1, Math.round(v)) })} />
+      </div>
+      <div className="mt-4">
+        {o.stage !== 'piloting' && o.stage !== 'scaling' ? (
+          <p className="text-sm text-slate-500">Sustain alerts start when the initiative is piloting or scaling.</p>
+        ) : alerts.length > 0 ? (
+          <Callout tone="danger" title="Sustain alerts">
+            <ul className="list-disc list-inside">{alerts.map((a) => <li key={a}>{a}</li>)}</ul>
+          </Callout>
+        ) : (
+          <Callout tone="success" title="Sustain checks current">Ownership, cost, and accuracy reviews are up to date.</Callout>
         )}
       </div>
     </Card>

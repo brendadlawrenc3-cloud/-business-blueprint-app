@@ -16,12 +16,14 @@ npm run build
 ### ALIGN in the app
 | Tab | Decision | What it does |
 |---|---|---|
-| Assess | WHY | Strategic Alignment Map + "Is this an AI problem?" constraint diagnostic |
+| Assess | WHY | Strategic Alignment Map, the "Is this an AI problem?" diagnostic, current AI use inventory + acceptable-use policy, AI exposure check, company profile and change capacity |
 | Locate | WHERE | Value Opportunity Map, Business Value Test, risk-adjusted economics |
 | Identify | WHEN | Six-dimension readiness with critical-deficiency rules |
-| Govern | HOW | Integration business case, oversight model, mandatory risk gates |
-| Navigate | WHAT | Performance scorecard, value-realization chain, scale/iterate/stop |
-| Decision Matrix | — | Weighted scoring + gates → Invest Now / Build Readiness / Pilot & Validate / Do Not Pursue; send to Decision Flow |
+| Govern | HOW | Integration business case, oversight model, mandatory risk gates, workforce impact, build/buy/partner |
+| Navigate | WHAT | Performance scorecard, value-realization chain, sustain plan, scale/iterate/stop |
+| Decision Matrix | — | Weighted scoring + gates → Invest Now / Build Readiness / Pilot & Validate / Do Not Pursue; leadership overrides; capacity check; send to Decision Flow |
+| Operating Model | — | Decision rights, portfolio review rhythm (adds to Command Center meetings), workforce commitment and communication plan, portfolio balance |
+| Advisor | — | CEO validation log, calibration suggestions, editable decision thresholds, IP readiness, advisory offers |
 
 ---
 

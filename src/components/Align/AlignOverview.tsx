@@ -1,4 +1,4 @@
-import { ArrowRight, RefreshCw, Compass } from 'lucide-react';
+import { ArrowRight, RefreshCw, Compass, CheckCircle2, Circle } from 'lucide-react';
 import { Card, CardHeader } from '../ui';
 import { useAlign } from '../../context/AlignContext';
 import type { AlignView, DecisionCategory, IntegrationLevel } from '../../types/align';
@@ -12,16 +12,19 @@ import {
   REASSESSMENT_TRIGGERS,
   VALUE_CHAIN,
 } from '../../data/alignFramework';
-import { decide, summarizeEconomics } from '../../utils/alignScoring';
+import { finalCategory, foundationChecks, summarizeEconomics } from '../../utils/alignScoring';
 import { formatMoney } from './helpers';
 
 const PHASE_VIEWS: AlignView[] = ['assess', 'locate', 'identify', 'govern', 'navigate'];
 
 export function AlignOverview({ onNavigate }: { onNavigate: (v: AlignView) => void }) {
-  const { opportunities, priorities, companyName, lastReviewed } = useAlign();
+  const state = useAlign();
+  const { opportunities, priorities, companyName, lastReviewed, thresholds } = state;
 
-  const decisions = opportunities.map((o) => ({ o, d: decide(o) }));
-  const byCategory = (c: DecisionCategory) => decisions.filter((x) => x.d.category === c);
+  const decisions = opportunities.map((o) => ({ o, category: finalCategory(o, thresholds) }));
+  const byCategory = (c: DecisionCategory) => decisions.filter((x) => x.category === c);
+  const foundations = foundationChecks(state);
+  const foundationsDone = foundations.filter((f) => f.done).length;
   const byLevel = (l: IntegrationLevel) => opportunities.filter((o) => o.level === l).length;
   const investValue = byCategory('invest-now').reduce(
     (sum, { o }) => sum + summarizeEconomics(o).riskAdjustedValue,
@@ -57,6 +60,30 @@ export function AlignOverview({ onNavigate }: { onNavigate: (v: AlignView) => vo
         <p className="text-sm text-slate-400 mt-4">
           The objective isn’t AI adoption. It is business performance improvement enabled by AI.
         </p>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Foundations"
+          subtitle="Conditions for running ALIGN safely and getting people to adopt it. Fix these alongside the first pilot, not after it."
+          action={<span className="text-sm font-semibold text-slate-700">{foundationsDone}/{foundations.length}</span>}
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2">
+          {foundations.map((f) => (
+            <div key={f.label} className="flex items-start gap-2 text-sm">
+              {f.done ? (
+                <CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-500 shrink-0" />
+              ) : (
+                <Circle className="w-4 h-4 mt-0.5 text-red-400 shrink-0" />
+              )}
+              <span className={f.done ? 'text-slate-500' : 'text-slate-800 font-medium'}>{f.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-4 mt-4 text-sm">
+          <button type="button" onClick={() => onNavigate('assess')} className="font-medium text-blue-600 hover:text-blue-700">Assess foundations →</button>
+          <button type="button" onClick={() => onNavigate('operating-model')} className="font-medium text-blue-600 hover:text-blue-700">Operating model →</button>
+        </div>
       </Card>
 
       {/* Five executive decisions */}

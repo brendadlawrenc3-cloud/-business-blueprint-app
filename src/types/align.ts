@@ -9,7 +9,128 @@ export type AlignView =
   | 'identify'
   | 'govern'
   | 'navigate'
-  | 'decide';
+  | 'decide'
+  | 'operating-model'
+  | 'advisor';
+
+// ── Company profile & edition (size calibration) ────────────────────────────
+
+export type RevenueBand = 'under-10m' | '10-50m' | '50-250m' | 'over-250m';
+
+export type Edition = 'essentials' | 'enterprise';
+
+export interface CompanyProfile {
+  industry: string;
+  revenueBand: RevenueBand;
+  employees: number;
+  edition: Edition;
+  // Leadership-set override; null means use the size-based default.
+  maxConcurrentPilots: number | null;
+}
+
+// ── Current AI use inventory ("shadow AI") & acceptable-use policy ───────────
+
+export type DataSensitivity = 'public' | 'internal' | 'confidential' | 'personal';
+
+export interface AIUsageRecord {
+  id: string;
+  useCase: string;
+  team: string;
+  toolCategory: string;
+  dataSensitivity: DataSensitivity;
+  sanctioned: boolean;
+  usersApprox: number;
+}
+
+export type PolicyElement =
+  | 'policyOwner'
+  | 'approvedTools'
+  | 'dataRules'
+  | 'humanReview'
+  | 'clientDisclosure'
+  | 'ipOwnership'
+  | 'incidentReporting'
+  | 'trainingRequired';
+
+// ── Competitive exposure ─────────────────────────────────────────────────────
+
+export interface RevenueExposure {
+  id: string;
+  stream: string;
+  revenueShare: number; // % of total revenue
+  threat: Score; // how easily AI-enabled competitors could undercut it
+  horizon: 'now' | '1-2-years' | '3-plus-years';
+  response: string;
+}
+
+// ── Operating model: decision rights, cadence, workforce ─────────────────────
+
+export type GovernanceActivity =
+  | 'setPriorities'
+  | 'approveInvestment'
+  | 'clearRiskGates'
+  | 'runPilot'
+  | 'scaleOrStop'
+  | 'policyAndInventory'
+  | 'portfolioReview';
+
+export interface DecisionRight {
+  accountable: string;
+  responsible: string;
+  consulted: string;
+}
+
+export type WorkforceStance = 'undecided' | 'redeploy' | 'redeploy-attrition' | 'reduce';
+
+export type CommsStep =
+  | 'whyBeforeWhat'
+  | 'commitmentStated'
+  | 'involveFrontline'
+  | 'trainingPlan'
+  | 'roleChanges'
+  | 'feedbackChannel'
+  | 'celebrateRedeployment';
+
+export interface OperatingModel {
+  decisionRights: Record<GovernanceActivity, DecisionRight>;
+  reviewCadence: 'monthly' | 'quarterly';
+  nextReviewDate: string;
+  workforceStance: WorkforceStance;
+  workforceCommitment: string;
+  comms: Record<CommsStep, boolean>;
+}
+
+// ── Advisor: validation & calibration, IP readiness ──────────────────────────
+
+export interface DecisionThresholds {
+  highValue: number; // min avg of strategic alignment + business value
+  investScore: number; // min weighted score for Invest Now
+  minConfidence: number; // 0–1 min confidence for Invest Now
+  doNotPursueValue: number; // below this avg value → Do Not Pursue
+}
+
+export interface ValidationSession {
+  id: string;
+  date: string;
+  ceo: string;
+  industry: string;
+  revenueBand: RevenueBand;
+  minutesToComplete: number;
+  topPickMatchedGut: boolean;
+  overrides: number;
+  opportunitiesScored: number;
+  confusingQuestions: string;
+  followUp90: 'pending' | 'confirmed' | 'mixed' | 'contradicted';
+  notes: string;
+}
+
+export type IPCheck =
+  | 'trademarkSearch'
+  | 'distinctiveName'
+  | 'methodDocumented'
+  | 'materialsCopyright'
+  | 'licensingTerms'
+  | 'validatedWithCEOs';
 
 // ── A: Assess Business Priorities ────────────────────────────────────────────
 
@@ -153,6 +274,42 @@ export type MatrixScores = Record<MatrixCriterion, Score>;
 
 export type DecisionCategory = 'invest-now' | 'build-readiness' | 'pilot-validate' | 'do-not-pursue';
 
+export interface DecisionOverride {
+  category: DecisionCategory;
+  reason: string;
+  date: string;
+}
+
+// ── Sourcing: build / buy / partner (tool-agnostic) ──────────────────────────
+
+export type SourcingApproach = 'undecided' | 'buy' | 'build' | 'partner';
+
+export type SourcingCriterion =
+  | 'dataHandling'
+  | 'integrationFit'
+  | 'totalCost'
+  | 'exitPortability'
+  | 'providerViability'
+  | 'timeToValue';
+
+export interface SourcingDecision {
+  approach: SourcingApproach;
+  scores: Record<SourcingCriterion, Score>;
+  rationale: string;
+}
+
+// ── Sustain: life after the pilot ────────────────────────────────────────────
+
+export interface SustainPlan {
+  owner: string;
+  costReviewEveryDays: number;
+  lastCostReview: string;
+  actualAnnualRunCost: number;
+  accuracyCheckEveryDays: number;
+  lastAccuracyCheck: string;
+  accuracySampleSize: number;
+}
+
 export interface AIOpportunity {
   id: string;
   title: string;
@@ -168,11 +325,24 @@ export interface AIOpportunity {
   design: IntegrationDesign;
   measures: PerformanceMeasure[];
   realization: ValueRealization;
+  rolesAffected: number;
+  reskillingPlan: string;
+  sourcing: SourcingDecision;
+  sustain: SustainPlan;
+  override: DecisionOverride | null;
 }
 
 export interface AlignState {
   companyName: string;
+  profile: CompanyProfile;
   priorities: StrategicPriority[];
   opportunities: AIOpportunity[];
+  aiInventory: AIUsageRecord[];
+  policy: Record<PolicyElement, boolean>;
+  exposure: RevenueExposure[];
+  operatingModel: OperatingModel;
+  thresholds: DecisionThresholds;
+  validation: ValidationSession[];
+  ipChecks: Record<IPCheck, boolean>;
   lastReviewed: string;
 }

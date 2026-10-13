@@ -2,7 +2,16 @@
 // is explicit, testable, and identical wherever it is applied.
 import type {
   AIOpportunity,
+  AIUsageRecord,
+  AlignState,
+  CompanyProfile,
+  DecisionThresholds,
   DecisionCategory,
+  OperatingModel,
+  PolicyElement,
+  RevenueExposure,
+  SourcingCriterion,
+  ValidationSession,
   GateStatus,
   MatrixCriterion,
   PerformanceMeasure,
@@ -10,7 +19,15 @@ import type {
   ReadinessDimension,
   StrategicPriority,
 } from '../types/align';
-import { CONSTRAINT_TYPES, MATRIX_CRITERIA, READINESS_DIMENSIONS } from '../data/alignFramework';
+import {
+  CONSTRAINT_TYPES,
+  DATA_SENSITIVITY,
+  DEFAULT_THRESHOLDS,
+  GOVERNANCE_ACTIVITIES,
+  MATRIX_CRITERIA,
+  READINESS_DIMENSIONS,
+  REVENUE_BANDS,
+} from '../data/alignFramework';
 
 // ── A: Strategic Alignment ───────────────────────────────────────────────────
 
@@ -117,6 +134,7 @@ export function designGaps(o: AIOpportunity): string[] {
   if (!d.scaleCriteria.trim()) gaps.push('No scale criteria agreed in advance');
   if (!d.stopCriteria.trim()) gaps.push('No stop criteria agreed in advance');
   if (!d.peopleChange.trim()) gaps.push('Impact on roles and people not addressed');
+  if (o.rolesAffected > 0 && !o.reskillingPlan.trim()) gaps.push(`${o.rolesAffected} roles affected but no reskilling plan`);
   return gaps;
 }
 
@@ -138,7 +156,9 @@ export interface DecisionResult {
   nextAction: string;
 }
 
-export function decide(o: AIOpportunity): DecisionResult {
+// The framework's recommendation. Leadership may override it (with a stated
+// reason); overrides are kept so the thresholds can be calibrated over time.
+export function decide(o: AIOpportunity, t: DecisionThresholds = DEFAULT_THRESHOLDS): DecisionResult {
   const score = weightedScore(o);
   const readiness = assessReadiness(o);
   const gates = evaluateGates(o);
@@ -150,7 +170,7 @@ export function decide(o: AIOpportunity): DecisionResult {
     reasons.push('A mandatory risk gate failed');
     return { category: 'do-not-pursue', score, reasons, nextAction: 'Redesign to remove the failed risk, or close.' };
   }
-  if (valueStrength < 2.5) {
+  if (valueStrength < t.doNotPursueValue) {
     reasons.push('Weak strategic alignment or business value');
     return { category: 'do-not-pursue', score, reasons, nextAction: 'Close and redirect effort to higher-value priorities.' };
   }
@@ -163,7 +183,7 @@ export function decide(o: AIOpportunity): DecisionResult {
     return { category: 'do-not-pursue', score, reasons, nextAction: 'Defer: clarify the outcome and business case, then reassess.' };
   }
 
-  const highValue = valueStrength >= 3.5;
+  const highValue = valueStrength >= t.highValue;
 
   if (highValue && readiness.classification === 'prepare') {
     reasons.push(...(readiness.blockers.length ? readiness.blockers : ['Readiness below pilot threshold']));
@@ -178,17 +198,24 @@ export function decide(o: AIOpportunity): DecisionResult {
       nextAction: 'Complete the risk-gate review before any pilot.',
     };
   }
-  if (highValue && o.economics.confidence >= 0.6 && score >= 70) {
+  if (highValue && o.economics.confidence >= t.minConfidence && score >= t.investScore) {
     reasons.push('High value, ready to pilot, risks acceptable');
     if (gates === 'cleared-with-conditions') reasons.push('Proceed with the gate conditions in place');
     return { category: 'invest-now', score, reasons, nextAction: 'Approve a time-boxed pilot with baseline and scale/stop criteria.' };
   }
 
-  if (o.economics.confidence < 0.6) reasons.push('Value hypothesis has low confidence');
+  if (o.economics.confidence < t.minConfidence) reasons.push('Value hypothesis has low confidence');
   if (!highValue) reasons.push('Value is promising but not yet proven');
-  if (score < 70) reasons.push('Weighted score below the Invest Now threshold (70)');
+  if (score < t.investScore) reasons.push(`Weighted score below the Invest Now threshold (${t.investScore})`);
   if (readiness.classification === 'prepare') reasons.push('Readiness gaps to close during validation');
   return { category: 'pilot-validate', score, reasons, nextAction: 'Run a small, cheap validation to test the value hypothesis.' };
+}
+
+// Leadership overrides apply, except that a failed risk gate can never be
+// overridden into an investment.
+export function finalCategory(o: AIOpportunity, t: DecisionThresholds = DEFAULT_THRESHOLDS): DecisionCategory {
+  if (evaluateGates(o) === 'blocked') return 'do-not-pursue';
+  return o.override?.category ?? decide(o, t).category;
 }
 
 // ── N: Performance ───────────────────────────────────────────────────────────
@@ -219,4 +246,206 @@ export function pilotVerdict(o: AIOpportunity): PilotVerdict {
   if (avg >= 80 && realizationStatus(o) !== 'unlinked') return 'scale';
   if (avg < 25) return 'stop';
   return 'iterate';
+}
+
+// ── Size calibration & change capacity ───────────────────────────────────────
+
+export function pilotLimit(profile: CompanyProfile): number {
+  return profile.maxConcurrentPilots ?? REVENUE_BANDS[profile.revenueBand].defaultPilots;
+}
+
+export interface CapacityStatus {
+  limit: number;
+  active: number;
+  queued: number;
+  overCapacity: boolean;
+}
+
+// A company can only absorb so much change at once. Active pilots plus
+// Invest Now approvals not yet started must fit within the limit.
+export function capacityStatus(state: AlignState): CapacityStatus {
+  const limit = pilotLimit(state.profile);
+  const active = state.opportunities.filter((o) => o.stage === 'piloting').length;
+  const queued = state.opportunities.filter(
+    (o) => o.stage !== 'piloting' && o.stage !== 'scaling' && o.stage !== 'stopped' &&
+      finalCategory(o, state.thresholds) === 'invest-now',
+  ).length;
+  return { limit, active, queued, overCapacity: active + queued > limit };
+}
+
+// ── Current AI use & policy ──────────────────────────────────────────────────
+
+export interface InventoryRisk {
+  total: number;
+  unsanctioned: number;
+  highRisk: AIUsageRecord[]; // unsanctioned use touching confidential or personal data
+  peopleUsing: number;
+}
+
+export function inventoryRisk(records: AIUsageRecord[]): InventoryRisk {
+  return {
+    total: records.length,
+    unsanctioned: records.filter((r) => !r.sanctioned).length,
+    highRisk: records.filter((r) => !r.sanctioned && DATA_SENSITIVITY[r.dataSensitivity].risk >= 3),
+    peopleUsing: records.reduce((sum, r) => sum + r.usersApprox, 0),
+  };
+}
+
+export function policyCoverage(policy: Record<PolicyElement, boolean>): number {
+  const values = Object.values(policy);
+  return Math.round((values.filter(Boolean).length / values.length) * 100);
+}
+
+// ── Competitive exposure ─────────────────────────────────────────────────────
+
+export function exposureSummary(exposure: RevenueExposure[]) {
+  const highThreat = exposure.filter((e) => e.threat >= 4);
+  const revenueAtRisk = highThreat.reduce((sum, e) => sum + e.revenueShare, 0);
+  const unanswered = highThreat.filter((e) => !e.response.trim());
+  return { highThreat, revenueAtRisk, unanswered };
+}
+
+// ── Sourcing ─────────────────────────────────────────────────────────────────
+
+export function sourcingScore(o: AIOpportunity): number {
+  const scores = Object.values(o.sourcing.scores) as number[];
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
+export function sourcingWarnings(o: AIOpportunity): string[] {
+  const w: string[] = [];
+  const s = o.sourcing.scores;
+  const weak = (Object.keys(s) as SourcingCriterion[]).filter((k) => s[k] <= 2);
+  if (o.sourcing.approach !== 'undecided' && evaluateGates(o) === 'incomplete')
+    w.push('A sourcing choice was made before the risk gates were assessed');
+  if (s.dataHandling <= 2) w.push('Data handling is weak — this usually fails the privacy gate later');
+  if (s.exitPortability <= 2) w.push('Weak exit terms create lock-in; negotiate before signing');
+  if (weak.length >= 3) w.push('Three or more weak criteria — reconsider the approach');
+  return w;
+}
+
+// ── Sustain ──────────────────────────────────────────────────────────────────
+
+function daysSince(date: string, today: Date): number | null {
+  if (!date) return null;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  return Math.floor((today.getTime() - d.getTime()) / 86_400_000);
+}
+
+export function sustainAlerts(o: AIOpportunity, today: Date = new Date()): string[] {
+  if (o.stage !== 'scaling' && o.stage !== 'piloting') return [];
+  const s = o.sustain;
+  const alerts: string[] = [];
+  if (!s.owner.trim()) alerts.push('No long-term owner after the pilot');
+  const costAge = daysSince(s.lastCostReview, today);
+  if (costAge === null || costAge > s.costReviewEveryDays) alerts.push('Cost review overdue');
+  const accAge = daysSince(s.lastAccuracyCheck, today);
+  if (accAge === null || accAge > s.accuracyCheckEveryDays) alerts.push('Accuracy check overdue');
+  if (s.actualAnnualRunCost > o.economics.annualRunCost * 1.2)
+    alerts.push(`Run cost is ${Math.round((s.actualAnnualRunCost / Math.max(1, o.economics.annualRunCost) - 1) * 100)}% over plan`);
+  return alerts;
+}
+
+// ── Operating model ──────────────────────────────────────────────────────────
+
+export function operatingModelGaps(m: OperatingModel, today: Date = new Date()): string[] {
+  const gaps: string[] = [];
+  const missing = (Object.keys(m.decisionRights) as (keyof typeof GOVERNANCE_ACTIVITIES)[]).filter(
+    (a) => !m.decisionRights[a].accountable.trim(),
+  );
+  if (missing.length) gaps.push(`${missing.length} activit${missing.length === 1 ? 'y has' : 'ies have'} no accountable owner`);
+  const age = daysSince(m.nextReviewDate, today);
+  if (!m.nextReviewDate) gaps.push('No portfolio review scheduled');
+  else if (age !== null && age > 0) gaps.push('Portfolio review date has passed');
+  if (m.workforceStance === 'undecided') gaps.push('Workforce position not stated');
+  const commsDone = Object.values(m.comms).filter(Boolean).length;
+  if (commsDone < Object.values(m.comms).length / 2) gaps.push('Workforce communication plan less than half complete');
+  return gaps;
+}
+
+// ── Foundations: is the organization ready to run ALIGN at all? ─────────────
+
+export interface FoundationCheck {
+  label: string;
+  done: boolean;
+}
+
+export function foundationChecks(state: AlignState): FoundationCheck[] {
+  const inv = inventoryRisk(state.aiInventory);
+  return [
+    { label: 'Current AI use inventoried', done: inv.total > 0 },
+    { label: 'No unsanctioned use of client or personal data', done: inv.highRisk.length === 0 },
+    { label: 'Acceptable-use policy ≥ 75% complete', done: policyCoverage(state.policy) >= 75 },
+    { label: 'Workforce position stated', done: state.operatingModel.workforceStance !== 'undecided' },
+    { label: 'Decision rights assigned', done: operatingModelGaps(state.operatingModel).every((g) => !g.includes('accountable')) },
+    { label: 'Competitive exposure assessed', done: state.exposure.length > 0 },
+    { label: 'Pilot load within change capacity', done: !capacityStatus(state).overCapacity },
+  ];
+}
+
+// ── Advisor: validation & calibration ────────────────────────────────────────
+
+export interface CalibrationInsight {
+  sessions: number;
+  gutMatchRate: number | null;
+  overrideRate: number | null;
+  avgMinutes: number | null;
+  followUpAccuracy: number | null;
+  upgrades: number;
+  downgrades: number;
+  suggestions: string[];
+}
+
+const CATEGORY_RANK: Record<DecisionCategory, number> = {
+  'do-not-pursue': 0,
+  'pilot-validate': 1,
+  'build-readiness': 2,
+  'invest-now': 3,
+};
+
+export function calibrationInsight(state: AlignState): CalibrationInsight {
+  const v: ValidationSession[] = state.validation;
+  const n = v.length;
+  const scored = v.reduce((sum, s) => sum + s.opportunitiesScored, 0);
+  const overrides = v.reduce((sum, s) => sum + s.overrides, 0);
+  const followed = v.filter((s) => s.followUp90 !== 'pending');
+
+  // Overrides recorded in this workspace show which way leaders disagree.
+  let upgrades = 0;
+  let downgrades = 0;
+  for (const o of state.opportunities) {
+    if (!o.override) continue;
+    const system = decide(o, state.thresholds).category;
+    const diff = CATEGORY_RANK[o.override.category] - CATEGORY_RANK[system];
+    if (diff > 0) upgrades++;
+    if (diff < 0) downgrades++;
+  }
+
+  const suggestions: string[] = [];
+  const overrideRate = scored > 0 ? overrides / scored : null;
+  if (n < 5) suggestions.push(`Run ${5 - n} more validation session${5 - n === 1 ? '' : 's'} before changing names or weights.`);
+  if (overrideRate !== null && overrideRate > 0.25)
+    suggestions.push('Over 25% of recommendations are overridden — review the decision rules with the CEOs who overrode them.');
+  if (upgrades > downgrades + 1)
+    suggestions.push(`Leaders upgrade more often than they downgrade — consider lowering the Invest Now score (now ${state.thresholds.investScore}) by 5.`);
+  if (downgrades > upgrades + 1)
+    suggestions.push(`Leaders downgrade more often than they upgrade — consider raising the Invest Now score (now ${state.thresholds.investScore}) by 5.`);
+  const avgMinutes = n ? v.reduce((s, x) => s + x.minutesToComplete, 0) / n : null;
+  if (avgMinutes !== null && avgMinutes > 240)
+    suggestions.push('Average completion exceeds 4 hours — simplify for the Essentials edition.');
+  const contradicted = followed.filter((s) => s.followUp90 === 'contradicted').length;
+  if (followed.length >= 3 && contradicted / followed.length > 0.3)
+    suggestions.push('More than 30% of 90-day follow-ups contradicted the recommendation — revisit the confidence threshold.');
+
+  return {
+    sessions: n,
+    gutMatchRate: n ? v.filter((s) => s.topPickMatchedGut).length / n : null,
+    overrideRate,
+    avgMinutes,
+    followUpAccuracy: followed.length ? followed.filter((s) => s.followUp90 === 'confirmed').length / followed.length : null,
+    upgrades,
+    downgrades,
+    suggestions,
+  };
 }
